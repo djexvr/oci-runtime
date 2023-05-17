@@ -14,11 +14,11 @@ pub struct Config {
 
 impl Config {
     pub fn build(args: &Vec<String>) -> Result<Config,&str> {
-        if args.len()<2 {
+        if args.len()<3 {
             return Err("Not enough arguments: expected at least two arguments");
         }
-        let command = args[0].as_str();
-        let id: i32 = args[0].parse().unwrap();
+        let command = args[1].as_str();
+        let id: i32 = args[2].parse().unwrap();
         if command == "state" {
             return Ok(Config {
                 command: Commands::State,
@@ -34,11 +34,11 @@ impl Config {
                 signal: None,
 
             })
-        } else if command == "Create" {
-            if args.len()<3 {
+        } else if command == "create" {
+            if args.len()<4 {
                 return Err("Expected a third argument: path to bundle");
             } else {
-                let path = args[2].to_string();
+                let path = args[3].to_string();
                 return Ok(Config {
                     command: Commands::Create,
                     id: id,
@@ -47,10 +47,10 @@ impl Config {
                 })
             } 
         } else if command == "kill" {
-            if args.len()<3 {
+            if args.len()<4 {
                 return Err("Expected a third argument: signal");
             } else {
-                let signal: i32 = args[2].parse().unwrap();
+                let signal: i32 = args[3].parse().unwrap();
                 return Ok(Config {
                     command: Commands::Kill,
                     id: id,
