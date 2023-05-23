@@ -1,4 +1,5 @@
 mod parse;
+mod state;
 
 enum Commands {
     State,
@@ -9,7 +10,7 @@ enum Commands {
 }
 pub struct Config {
     command: Commands,
-    id: i32,
+    id: String,
     path: Option<String>,
     signal: Option<i32>,
 }
@@ -20,7 +21,7 @@ impl Config {
             return Err("Not enough arguments: expected at least two arguments");
         }
         let command = args[1].as_str();
-        let id: i32 = args[2].parse().unwrap();
+        let id: String = args[2].parse().unwrap();
         if command == "state" {
             return Ok(Config {
                 command: Commands::State,
@@ -76,7 +77,7 @@ impl Config {
 
 pub fn run(conf: Config) {
     match conf.command {
-        Commands::State => state(conf.id),
+        Commands::State => {state::state(conf.id); ()}
         Commands::Create => create(conf.id,conf.path),
         Commands::Start => start(conf.id),
         Commands::Kill => kill(conf.id, conf.signal),
@@ -84,22 +85,19 @@ pub fn run(conf: Config) {
     }
 }
 
-fn state(id: i32) {
+
+fn create(id: String,path: Option<String>) {
 
 }
 
-fn create(id: i32,path: Option<String>) {
+fn start(id: String) {
 
 }
 
-fn start(id: i32) {
+fn kill(id: String, signal: Option<i32>) {
 
 }
 
-fn kill(id: i32, signal: Option<i32>) {
-
-}
-
-fn delete(id: i32) {
+fn delete(id: String) {
 
 }
