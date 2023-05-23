@@ -20,15 +20,15 @@ impl Status {
     }
 }
 pub struct State {
-    id: String,
-    pid: i64,
-    status: Status,
-    bundle: String,
+    pub id: String,
+    pub pid: i64,
+    pub status: Status,
+    pub bundle: String,
 }
 
 pub fn build_status(id: String) -> Result<State,String> {
     let path = format!("{STATUS_PATH}{id}.json");
-    let content = fs::read_to_string(path.clone()).expect("Unable to read file");
+    let content = fs::read_to_string(path.clone()).expect("No container with such ID");
     let value: serde_json::Value = serde_json::from_str(&content[..]).unwrap();
 
     let pid: i64;

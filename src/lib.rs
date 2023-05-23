@@ -1,5 +1,6 @@
 mod parse;
 mod state;
+mod kill;
 
 enum Commands {
     State,
@@ -12,7 +13,7 @@ pub struct Config {
     command: Commands,
     id: String,
     path: Option<String>,
-    signal: Option<i32>,
+    signal: Option<String>,
 }
 
 impl Config {
@@ -53,7 +54,7 @@ impl Config {
             if args.len()<4 {
                 return Err("Expected a third argument: signal");
             } else {
-                let signal: i32 = args[3].parse().unwrap();
+                let signal: String = args[3].parse().unwrap();
                 return Ok(Config {
                     command: Commands::Kill,
                     id: id,
@@ -80,7 +81,7 @@ pub fn run(conf: Config) {
         Commands::State => {state::state(conf.id); ()}
         Commands::Create => create(conf.id,conf.path),
         Commands::Start => start(conf.id),
-        Commands::Kill => kill(conf.id, conf.signal),
+        Commands::Kill => {kill::kill(conf.id, conf.signal); ()},
         Commands::Delete => delete(conf.id),
     }
 }
@@ -91,10 +92,6 @@ fn create(id: String,path: Option<String>) {
 }
 
 fn start(id: String) {
-
-}
-
-fn kill(id: String, signal: Option<i32>) {
 
 }
 
