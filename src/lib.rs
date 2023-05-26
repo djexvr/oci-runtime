@@ -1,6 +1,7 @@
 mod parse;
 mod state;
 mod kill;
+mod delete;
 
 enum Commands {
     State,
@@ -82,7 +83,7 @@ pub fn run(conf: Config) {
         Commands::Create => create(conf.id,conf.path),
         Commands::Start => start(conf.id),
         Commands::Kill => {kill::kill(conf.id, conf.signal); ()},
-        Commands::Delete => delete(conf.id),
+        Commands::Delete => {delete::delete(conf.id);()}
     }
 }
 
@@ -92,9 +93,5 @@ fn create(id: String,path: Option<String>) {
 }
 
 fn start(id: String) {
-
-}
-
-fn delete(id: String) {
 
 }

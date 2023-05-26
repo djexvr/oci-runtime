@@ -25,6 +25,6 @@ pub fn kill(id: String, signal: Option<String>) -> Result<(),String> {
                 Ok(_) => Ok(()),
             }
         },
-        _ => Err(format!("Error: Status of container is neither Created nor Running")),
+        _ => Err(format!("Error: Status of container is neither Created nor Running, cannot send signal")),
     }
 }

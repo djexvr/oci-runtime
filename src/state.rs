@@ -1,7 +1,10 @@
 use serde_json::Value;
 use std::fs;
 
-const STATUS_PATH: &str = "~/.oci-runtime/container_statuses/";
+pub const MAIN_PATH: &str = "~/.oci-runtime/";
+const STATUS_SUFF: &str = "container_statuses/";
+pub const FOLDER_SUFF: &str = "container_folders/";
+
 pub enum Status {
     Creating,
     Created,
@@ -27,7 +30,7 @@ pub struct State {
 }
 
 pub fn build_status(id: String) -> Result<State,String> {
-    let path = format!("{STATUS_PATH}{id}.json");
+    let path = format!("{MAIN_PATH}{STATUS_SUFF}{id}.json");
     let content = fs::read_to_string(path.clone()).expect("No container with such ID");
     let value: serde_json::Value = serde_json::from_str(&content[..]).unwrap();
 
