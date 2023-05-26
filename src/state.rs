@@ -52,17 +52,12 @@ pub fn build_status(id: String) -> Result<State,String> {
     }
     match &value["status"] {
         Value::String(s) => {
-            let st = s.to_string();
-            if st == format!("creating") {
-                status = Status::Creating
-            } else if st == format!("created") {
-                status = Status::Created
-            } else if st == format!("Running") {
-                status = Status::Running
-            } else if st == format!("Stopped") {
-                status = Status::Stopped
-            } else {
-                return Err(format!("Invalid Status in {path}"))
+            match s.as_str() {
+                "creating" => status = Status::Creating,
+                "created" => status = Status::Created,
+                "running" => status = Status::Running,
+                "stopped" => status = Status::Stopped,
+                _ => return Err(format!("Invalid Status in {path}")),
             }
         } 
         _ => return Err(format!("Expected Status to be a string in {path}"))
