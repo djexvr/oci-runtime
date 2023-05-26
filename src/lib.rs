@@ -81,17 +81,10 @@ pub fn run(conf: Config) {
     match conf.command {
         Commands::State => {state::state(conf.id); ()}
         Commands::Create => {match create::create(conf.id, conf.path.unwrap()){ Err(s) => println!("{}", s), _ =>() }; ()}, //conf.path is always defined with Create
-        Commands::Start => start(conf.id),
+        Commands::Start => {start::start(conf.id); ()},
         Commands::Kill => {kill::kill(conf.id, conf.signal); ()},
         Commands::Delete => {delete::delete(conf.id);()}
     }
 }
 
 
-
-
-
-
-fn start(id: String) {
-
-}
