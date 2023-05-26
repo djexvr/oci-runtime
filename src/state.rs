@@ -1,8 +1,10 @@
 use serde_json::Value;
 use std::fs;
+use std::fs::File;
+use std::io::Write;
 
 pub const MAIN_PATH: &str = "~/.oci-runtime/";
-const STATUS_SUFF: &str = "container_statuses/";
+pub const STATUS_SUFF: &str = "container_statuses/";
 pub const FOLDER_SUFF: &str = "container_folders/";
 
 pub enum Status {
@@ -82,3 +84,25 @@ pub fn state(id: String) -> Result<String,String>{
     ))
 }
 
+pub fn modify_state(id: String, state: Status) -> Result<(),String>{
+    let path = format!("{MAIN_PATH}{STATUS_SUFF}{id}.json");
+    let content = match fs::read_to_string(path.clone()) {
+        Ok(s) => s,
+        Err(_) => return Err(format!("Error: No container with such ID")),
+    };
+    let mut value: serde_json::Value = serde_json::from_str(&content[..]).unwrap();
+    
+    let status = match state {
+        Status::Created => format!("created"),
+        Status::Creating => format!("creating"),
+        Status::Running => format!("running"),
+        Status::Stopped => format!("stopped"),
+    };
+    value["status"] = Value::String(status);
+    let serialized = serde_json::to_string(&value).unwrap();
+    let mut f = File::open(path).expect("Unable to open file");
+    match f.write_all(serialized.as_bytes()) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(format!("Error: Unable to write status file")),
+    }
+}
