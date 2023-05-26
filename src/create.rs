@@ -2,45 +2,34 @@ use nix::{mount::{mount, umount2, MntFlags, MsFlags}, sched::{clone, unshare, Cl
 use std::error::Error;
 use std::fs::create_dir_all;
 use std::path::Path;
+use crate::parse::create_config;
 
-enum Namespace {
-    PID,
-    Network,
-    Mount,
-    IPC,
-    UTS,
-    User,
-    Cgroup,
-    Time,
-}
+pub fn to_flag(namespace: &String) -> CloneFlags {
+        match namespace.as_str() {
 
-impl Namespace {
-    pub fn to_flag(&self) -> CloneFlags {
-        match &self {
-            &PID => CloneFlags::CLONE_NEWPID,
-            &Network => CloneFlags::CLONE_NEWNET,
-            &Mount => CloneFlags::CLONE_NEWNS,
-            &IPC => CloneFlags::CLONE_NEWIPC,
-            &UTS => CloneFlags::CLONE_NEWUTS,
-            &User => CloneFlags::CLONE_NEWUSER,
-            &Cgroup => CloneFlags::CLONE_NEWCGROUP,
-            &Time => CloneFlags::empty(), // Clone can't create a new time namespace
+            "pid" => CloneFlags::CLONE_NEWPID,
+            "network" => CloneFlags::CLONE_NEWNET,
+            "mount" => CloneFlags::CLONE_NEWNS,
+            "ipc" => CloneFlags::CLONE_NEWIPC,
+            "uts" => CloneFlags::CLONE_NEWUTS,
+            "user" => CloneFlags::CLONE_NEWUSER,
+            "cgroup" => CloneFlags::CLONE_NEWCGROUP,
+            _ => CloneFlags::empty(),
         }
-    }
 }
 
+pub fn create(id: String, path: String) -> Result<(), String> {
+    let config = create_config(path)?;
+    create_container_proc(|| {
+        init_container_fs(Path::new(&config.root)).unwrap();
+        use std::process;
+        println!("My pid is {}", process::id());
+        0
+    }, config.linux.namespaces);
+    Ok(())
+}
 // Create a new process with required namespaces using clone
-pub fn create_container_proc(child_fun: impl Fn() -> isize) {
-    // TODO: get namespace from config
-    let namespaces = vec![
-        Namespace::PID,
-        Namespace::Network,
-        Namespace::Mount,
-        Namespace::IPC,
-        Namespace::UTS,
-        Namespace::User,
-        Namespace::Cgroup,
-    ];
+pub fn create_container_proc(child_fun: impl Fn() -> isize, namespaces: Vec<String>) {
 
     const STACK_SIZE: usize = 4 * 1024 * 1024; // 4 MB
     let ref mut stack: [u8; STACK_SIZE] = [0; STACK_SIZE];
@@ -50,7 +39,7 @@ pub fn create_container_proc(child_fun: impl Fn() -> isize) {
         stack,
         namespaces
             .iter()
-            .fold(CloneFlags::empty(), |acc, ns| acc | ns.to_flag()),
+            .fold(CloneFlags::empty(), |acc, ns| acc | to_flag(ns)),
         None,
     )
     .unwrap();
@@ -73,7 +62,6 @@ pub fn init_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
         MsFlags::MS_BIND | MsFlags::MS_REC,
         None::<&Path>,
     )?;
-    unshare(CloneFlags::CLONE_NEWNS)?; // For some reason we need to unshare even though a new namespace was created when cloning
     chdir(Path::new(new_root))?;
     create_dir_all(new_root.join("oldroot"))?;
     pivot_root(new_root.as_os_str(), new_root.join("oldroot").as_os_str())?;

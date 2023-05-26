@@ -1,3 +1,4 @@
+mod create;
 mod parse;
 mod state;
 mod kill;
@@ -78,7 +79,7 @@ impl Config {
 pub fn run(conf: Config) {
     match conf.command {
         Commands::State => {state::state(conf.id); ()}
-        Commands::Create => create(conf.id, conf.path),
+        Commands::Create => {match create::create(conf.id, conf.path.unwrap()){ Err(s) => println!("{}", s), _ =>() }; ()}, //conf.path is always defined with Create
         Commands::Start => start(conf.id),
         Commands::Kill => {kill::kill(conf.id, conf.signal); ()},
         Commands::Delete => {delete::delete(conf.id);()}
@@ -87,23 +88,8 @@ pub fn run(conf: Config) {
 
 
 
-fn test_fun(name: &str) {
-    use std::process;
-    println!("My pid is {}", process::id());
-}
 
-mod create;
 
-fn create(id: String, path: Option<String>) {
-    use std::path::Path;
-    create::create_container_proc(|| {
-        test_fun("tony");
-        create::init_container_fs(Path::new(
-            "/home/djex/Documents/CS/2A/Programmation_systeme/projet_container/alpine",
-        )).unwrap();
-        0
-    });
-}
 
 fn start(id: String) {
 

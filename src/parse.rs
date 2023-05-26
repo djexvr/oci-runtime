@@ -2,16 +2,21 @@ use serde_json::Value;
 use std::fs;
 
 pub struct Process {
-    cwd: String,
-    env: Vec<String>,
-    args: Vec<String>,
-    uid: i64,
-    gid: i64,
+    pub cwd: String,
+    pub env: Vec<String>,
+    pub args: Vec<String>,
+    pub uid: i64,
+    pub gid: i64,
+}
+
+pub struct Linux {
+    pub namespaces: Vec<String>,
 }
 
 pub struct ContainerConfig {
-    root: String,
-    process: Process,
+    pub root: String,
+    pub process: Process,
+    pub linux: Linux
 }
 
 pub fn create_config(path: String) -> Result<ContainerConfig,String> {
@@ -24,6 +29,7 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
     let gid: i64;
     let mut env: Vec<String> = Vec::new();
     let mut args: Vec<String> = Vec::new();
+    let mut namespaces: Vec<String> = Vec::new();
 
     match &value["root"] {
         Value::Object(_) => {
@@ -86,10 +92,34 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
                 Value::Null => (),
                 _ => return Err(format!("Invalid field process/args in config.json")),
             }
-        }
+
+            }
         Value::Null=> return Err(format!("Field process should exist in config.json")),
         _ => return Err(format!("Invalid field process in config.json")),
     }
+
+    match &value["linux"] {
+        Value::Object(_) => {
+            match &value["linux"]["namespaces"] {
+                Value::Array(vec) => {
+                    for val in vec.into_iter() {
+                        match val {
+                            Value::Object(_) => {
+                                match &val["type"] {
+                                    Value::String(s) => namespaces.push(s.clone()),
+                                    _ => return Err(format!("Invalid field process/linux/namespace/type in config.json"))
+                                }
+                            },
+                            _ => return Err(format!("Invalid content of array process/linux/namespace in config.json")),
+                        }
+                    }
+                },
+                _ => return Err(format!("Invalid content of array process/linux/namespace in config.json")),
+            }
+        },
+        _ => (),
+    }
+
     return Ok(ContainerConfig {
         root,
         process: Process {
@@ -98,6 +128,9 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
             env,
             args,
             cwd,
+        },
+        linux: Linux {
+            namespaces,
         }
     })
 }
