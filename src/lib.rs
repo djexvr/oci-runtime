@@ -3,6 +3,7 @@ mod parse;
 mod state;
 mod kill;
 mod delete;
+mod start;
 
 enum Commands {
     State,
