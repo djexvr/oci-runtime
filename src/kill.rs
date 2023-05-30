@@ -16,13 +16,13 @@ pub fn kill(id: String, signal: Option<String>) -> Result<(),String> {
                 None => return Err(format!("Error: No signal provided")),
                 Some(s) => {
                     match Signal::from_str(&s[..]) {
-                        Err(_) => return Err(format!("Error: Invalid signal")),
+                        Err(e) => return Err(format!("Error: Invalid signal\n{e}\n")),
                         Ok(s) => sig = s,
                     }
                 }
             }
             match signal::kill(pid, sig) {
-                Err(_) => Err(format!("Error while sending signal")),
+                Err(e) => Err(format!("Error while sending signal:\n{e}\n")),
                 Ok(_) => Ok(()),
             }
         },

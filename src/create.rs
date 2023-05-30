@@ -6,9 +6,11 @@ use std::fs::{create_dir_all, remove_dir_all, canonicalize};
 use std::path::Path;
 use std::process::Command;
 use crate::parse::create_config;
-use crate::state::{FOLDER_SUFF,STATUS_SUFF,MAIN_PATH};
+use crate::state::{STATUS_SUFF,MAIN_PATH};
 use crate::start::receive_start;
 
+
+/// translates namespace from string to CloneFlags object
 pub fn to_flag(namespace: &String) -> CloneFlags {
         match namespace.as_str() {
 
@@ -23,12 +25,14 @@ pub fn to_flag(namespace: &String) -> CloneFlags {
         }
 }
 
+
+/// Does all the necessary operations to create the container file system, pivot root, change namespaces, and then await for start signal.
 pub fn create(id: String, path: String) -> Result<(), String> {
 
     check_id_unicity(id.clone())?;
 
-    let config = create_config(path)?;
-    let container_fs_path = canonicalize(Path::new(MAIN_PATH)).unwrap().join(FOLDER_SUFF).join(id.clone());
+    let config = create_config(path.clone())?;
+    let container_fs_path = canonicalize(Path::new(&path)).unwrap();
     if container_fs_path.exists() {
         remove_dir_all(&container_fs_path).unwrap();
     }
@@ -38,7 +42,7 @@ pub fn create(id: String, path: String) -> Result<(), String> {
     // closure that executes the pivot_root, waits for the start message, forks for the main process, then send started message
     let pivot_root_closure = || {
         pivot_to_container_fs(&container_fs_path).unwrap();
-        match receive_start(id.clone()) {
+        match receive_start() {
             Ok(_) => (),
             Err(s) => {println!("{s}");return -1}
         };
@@ -55,7 +59,7 @@ pub fn create(id: String, path: String) -> Result<(), String> {
     };
 
     let pid =create_container_proc(pivot_root_closure, config.linux.namespaces);
-    create_status_file(id,pid)
+    create_status_file(id,pid,path)
 }
 
 
@@ -102,7 +106,8 @@ pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn create_status_file(id: String, pid: Pid) -> Result<(),String> {
+/// creates the status file for the container
+fn create_status_file(id: String, pid: Pid,root: String) -> Result<(),String> {
     let path_string = format!("{MAIN_PATH}{STATUS_SUFF}{id}.json");
     let path = Path::new(path_string.as_str());
     let mut file: File;
@@ -110,10 +115,9 @@ fn create_status_file(id: String, pid: Pid) -> Result<(),String> {
         Err(e) => return Err(format!("Error: Could not create status file:\n{e}")),
         Ok(f) => file = f,
     }
-    let folder_path = format!("{MAIN_PATH}{FOLDER_SUFF}{id}");
     let json_content = format!("{{
         \"pid\":{},
-        \"bundle\":\"{folder_path}\",
+        \"bundle\":\"{root}\",
         \"status\":\"created\"
     }}",pid);
     let buf = json_content.as_bytes();
@@ -123,6 +127,8 @@ fn create_status_file(id: String, pid: Pid) -> Result<(),String> {
     }
 }
 
+
+/// checks that the id is unique
 fn check_id_unicity(id: String) -> Result<(),String> {
     if !Path::new(format!("{MAIN_PATH}{STATUS_SUFF}{id}.json",).as_str()).exists() {
         Ok(())

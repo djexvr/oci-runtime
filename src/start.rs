@@ -1,7 +1,7 @@
 use super::state;
 use std::os::unix::net::{UnixStream,UnixListener};
 use std::io::{Read, Write};
-use state::{MAIN_PATH,FOLDER_SUFF};
+use state::build_status;
 use std::fs::remove_file;
 
 /// Function used to start the desired command inside the container host side.
@@ -21,7 +21,8 @@ pub fn start(id: String) -> Result<(),String> {
 
 /// Sends a start message to the container via a socket
 fn send_start(id: String) -> Result<(),String> {
-    let socket_path = format!("{MAIN_PATH}{FOLDER_SUFF}{id}/fs/start");
+    let status = build_status(id.clone())?;
+    let socket_path = format!("{}/start",status.bundle);
 
     let mut input_stream =
         match UnixStream::connect(socket_path.as_str()) {
@@ -35,8 +36,8 @@ fn send_start(id: String) -> Result<(),String> {
 }
 
 /// Listens for a "Start" message from the host on a socket
-pub fn receive_start(id:String) -> Result<(),String> {
-    let socket_path = "start";
+pub fn receive_start() -> Result<(),String> {
+    let socket_path: &str = "start";
 
     let unix_listener =
         match UnixListener::bind(socket_path) {
@@ -44,7 +45,7 @@ pub fn receive_start(id:String) -> Result<(),String> {
             Err(e) => return Err(format!("Error: could not create socket:\n{e}\n")),
         };
 
-    let (mut input_stream, socket_address) = match unix_listener
+    let (mut input_stream, _socket_address) = match unix_listener
         .accept() {
             Ok(s) => s,
             Err(e) => return Err(format!("Error: Problem while accepting start socket connection:\n{e}\n")),

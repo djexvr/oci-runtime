@@ -8,8 +8,6 @@ use std::collections::HashMap;
 pub const MAIN_PATH: &str = "./data/";
 /// Suffix of the path leading to the status files of the containers
 pub const STATUS_SUFF: &str = "status/";
-/// Suffix of the path leading to the root files of the containers
-pub const FOLDER_SUFF: &str = "fs/";
 
 /// States a container may be in
 pub enum Status {
@@ -21,6 +19,7 @@ pub enum Status {
 
 
 impl Status {
+    /// translates from Status object to String.
     pub fn to_string(&self) -> String {
         match self {
             Self::Created => format!("created"),
