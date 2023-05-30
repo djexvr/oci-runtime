@@ -56,7 +56,7 @@ fn receive_started(id: String) -> Result<(),String> {
 
 
 /// Listens for a "Start" message from the host on a socket
-fn receive_start(id:String) -> Result<(),String> {
+pub fn receive_start(id:String) -> Result<(),String> {
     let input_path = format!("{id}_input");
     let mut input_stream;
     match UnixStream::connect(input_path.as_str()) {
@@ -76,7 +76,7 @@ fn receive_start(id:String) -> Result<(),String> {
 }
 
 /// Sends a "Started" message to the host via a socket
-fn send_started(id: String) -> Result<(),String> {
+pub fn send_started(id: String) -> Result<(),String> {
     let output_path = format!("{id}_output");
             let mut output_stream;
             match UnixStream::connect(output_path.as_str()) {

@@ -1,11 +1,14 @@
 use nix::{mount::{mount, umount2, MntFlags, MsFlags},
-sched::{clone, unshare, CloneFlags}, 
+sched::{clone, CloneFlags}, 
 unistd::{chdir, pivot_root,Pid}};
 use std::{error::Error, fs::File, io::Write};
-use std::fs::create_dir_all;
+use std::fs;
+use std::fs::{create_dir_all, remove_dir_all};
 use std::path::Path;
-use crate::parse::{create_config,ContainerConfig};
+use std::process::Command;
+use crate::parse::create_config;
 use crate::state::{FOLDER_SUFF,STATUS_SUFF,MAIN_PATH};
+use crate::start::{receive_start, send_started};
 
 pub fn to_flag(namespace: &String) -> CloneFlags {
         match namespace.as_str() {
@@ -22,21 +25,50 @@ pub fn to_flag(namespace: &String) -> CloneFlags {
 }
 
 pub fn create(id: String, path: String) -> Result<(), String> {
-    check_id_unicity(id.clone())?;
-    let config = create_config(path)?;
-    let container_fs_path = fs::canonicalize("./.data").unwrap().join(id.as_str());
-    std::fs::create_dir_all(&container_fs_path).unwrap();
-    create_container_folder(id.clone(),&config)?;
-    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path.join("fs"),).unwrap();
 
-    let pid =create_container_proc(|| {
+    const STACK_SIZE: usize = 4 * 1024 * 1024; // 4 MB
+    let ref mut stack: [u8; STACK_SIZE] = [0; STACK_SIZE];
+
+    check_id_unicity(id.clone())?;
+
+    let config = create_config(path)?;
+
+    let container_fs_path = fs::canonicalize("./.data").unwrap().join(id.as_str());
+    if container_fs_path.exists() {
+        remove_dir_all(format!("{MAIN_PATH}{FOLDER_SUFF}{id}").as_str()).unwrap();
+    }
+    std::fs::create_dir_all(&container_fs_path).unwrap();
+    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path).unwrap();
+
+    
+    // closure that executes the pivot_root, waits for the start message, forks for the main process, then send started message
+    let pivot_root_closure = || {
         pivot_to_container_fs(&container_fs_path.join("fs")).unwrap();
-        use std::process;
-        println!("My pid is {}", process::id());
-        0
-    }, config.linux.namespaces);
+        match receive_start(id.clone()) {
+            Ok(_) => (),
+            Err(s) => {println!("{s}");return -1}
+        };
+
+        match Command::new(config.process.cwd.clone())
+                .args(config.process.args.clone())
+                .spawn() {
+            Ok(_) => (),
+            Err(e) => {{println!("Could not start desired process in container:\n{e}\n");return -1}}
+        }
+        match send_started(id.clone()) {
+            Ok(_) => (),
+            Err(s) => {println!("{s}");return -1}
+        };
+        return 0;
+
+        
+    };
+
+    let pid =create_container_proc(pivot_root_closure, config.linux.namespaces);
     create_status_file(id,pid)
 }
+
+
 // Create a new process with required namespaces using clone
 pub fn create_container_proc(child_fun: impl Fn() -> isize, namespaces: Vec<String>) -> Pid {
 
@@ -111,8 +143,4 @@ fn check_id_unicity(id: String) -> Result<(),String> {
         Ok(false) => Ok(()),
         Err(e) => Err(format!("Error: Unable to check for status file:\n{e}")),
     }
-}
-
-fn create_container_folder(id: String, config: &ContainerConfig) -> Result<(),String> {
-    Ok(())
 }
