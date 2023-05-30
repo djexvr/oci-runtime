@@ -5,11 +5,11 @@ use std::io::Write;
 use std::collections::HashMap;
 
 /// First part of the path to the file managed and created by our program
-pub const MAIN_PATH: &str = "./.oci-runtime/";
+pub const MAIN_PATH: &str = "./data/";
 /// Suffix of the path leading to the status files of the containers
-pub const STATUS_SUFF: &str = "container_statuses/";
+pub const STATUS_SUFF: &str = "status/";
 /// Suffix of the path leading to the root files of the containers
-pub const FOLDER_SUFF: &str = "container_folders/";
+pub const FOLDER_SUFF: &str = "fs/";
 
 /// States a container may be in
 pub enum Status {

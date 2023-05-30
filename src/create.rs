@@ -32,8 +32,7 @@ pub fn create(id: String, path: String) -> Result<(), String> {
     if container_fs_path.exists() {
         remove_dir_all(&container_fs_path).unwrap();
     }
-    std::fs::create_dir_all(&container_fs_path).unwrap();
-    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path.join("fs")).unwrap();
+    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path).unwrap();
 
     
     // closure that executes the pivot_root, waits for the start message, forks for the main process, then send started message
