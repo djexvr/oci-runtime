@@ -4,16 +4,21 @@ use std::fs::File;
 use std::io::Write;
 use std::collections::HashMap;
 
+/// First part of the path to the file managed and created by our program
 pub const MAIN_PATH: &str = "/home/byejablek/.oci-runtime/";
+/// Suffix of the path leading to the status files of the containers
 pub const STATUS_SUFF: &str = "container_statuses/";
+/// Suffix of the path leading to the root files of the containers
 pub const FOLDER_SUFF: &str = "container_folders/";
 
+/// States a container may be in
 pub enum Status {
     Creating,
     Created,
     Running,
     Stopped,
 }
+
 
 impl Status {
     pub fn to_string(&self) -> String {
@@ -25,6 +30,8 @@ impl Status {
         }
     }
 }
+
+/// Informations contained in a container status file
 pub struct State {
     pub id: String,
     pub pid: i64,
@@ -32,6 +39,7 @@ pub struct State {
     pub bundle: String,
 }
 
+/// Reads the status.json file associated with the container, and put these informations in a State struct
 pub fn build_status(id: String) -> Result<State,String> {
     let path = format!("{MAIN_PATH}{STATUS_SUFF}{id}.json");
     let content = fs::read_to_string(path.clone()).expect("No container with such ID");
@@ -72,6 +80,7 @@ pub fn build_status(id: String) -> Result<State,String> {
     })
 }
 
+/// Returns a String formated to present the status informations of the container
 pub fn state(id: String) -> Result<String,String>{
     let status = build_status(id)?;
     Ok(format!(
@@ -80,6 +89,7 @@ pub fn state(id: String) -> Result<String,String>{
     ))
 }
 
+/// Changes the state of the container in the status file
 pub fn modify_state(id: String, state: Status) -> Result<(),String>{
     let path = format!("{MAIN_PATH}{STATUS_SUFF}{id}.json");
     let content = match fs::read_to_string(path.clone()) {

@@ -2,6 +2,7 @@ use crate::state;
 use std::fs::{remove_dir_all,remove_file};
 use crate::state::{MAIN_PATH,FOLDER_SUFF,STATUS_SUFF};
 
+/// Deletes the container status file and the container root folder.
 pub fn delete(id: String) -> Result<(),String>{
     let status =state::build_status(id.clone())?;
     match status.status {

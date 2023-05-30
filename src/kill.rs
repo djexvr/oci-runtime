@@ -4,6 +4,7 @@ use crate::state;
 use nix::unistd::Pid;
 use nix::sys::signal::{self, Signal};
 
+/// Sends the signal passed as argument to the process running in the container
 pub fn kill(id: String, signal: Option<String>) -> Result<(),String> {
     let status =  state::build_status(id)?;
     match status.status {

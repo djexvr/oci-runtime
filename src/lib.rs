@@ -5,6 +5,7 @@ mod kill;
 mod delete;
 mod start;
 
+/// The five commands that may be called through the CLI
 enum Commands {
     State,
     Create,
@@ -12,6 +13,10 @@ enum Commands {
     Kill,
     Delete,
 }
+
+/// Informations that may be contained in the arguments passed through the CLI.
+/// Path must only be present if the command is create.
+/// Signal must only be present if the command is kill.
 pub struct Config {
     command: Commands,
     id: String,
@@ -77,6 +82,7 @@ impl Config {
     }
 }
 
+/// Calls the relevant fonction, depending on the command passed, and manages the results.
 pub fn run(conf: Config) {
     let res = match conf.command {
         Commands::State => match state::state(conf.id) {

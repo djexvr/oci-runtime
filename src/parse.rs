@@ -19,6 +19,7 @@ pub struct ContainerConfig {
     pub linux: Linux
 }
 
+///  Reads the config file in the container bundle, and returns the result in a ContainerConfig struct
 pub fn create_config(path: String) -> Result<ContainerConfig,String> {
     let content = fs::read_to_string(path).expect("Unable to read file");
     let value: serde_json::Value = serde_json::from_str(&content[..]).unwrap();
