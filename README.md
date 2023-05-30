@@ -7,6 +7,57 @@ Déodat Père & Vianney Ruhlmann
 
 Ce projet est un runtime pour conteneur en Rust, remplissant des fonctions similaires a ```runc```. Nous nous sommes inspiré de la norme OCI (Open Container Initiative), décrivant le cahier des charges d'un runtime pour conteneur avec lequel on pourrait faire tourner Docker ou Kubernetes à la place de runc. Etant donné la complexité du projet, il n'était pas réaliste d'implémenter tout le cahier des charges de la norme OCI, et nous nous sommes donc rabattus sur un cahier des charges plus limité.
 
+## Tutoriel
+
+Pour utiliser le runtime vous avez besoin d'un dossier qui servira de filesystem pour le conteneur.
+Une manière simple de le générer est d'utiliser docker.
+
+``` shell
+docker export $(docker create alpine) --output="alpine.tar"
+tar -xf alpine.tar -C alpine
+```
+
+Il faut ensuite rédiger une configuration, voici un exemple:
+
+``` json
+{
+    "root": {
+        "path": "chemin_vers_le_filesystem"
+    },
+    "process": {
+        "cwd": "/",
+        "args": [
+            "/bin/echo",
+            "hello"
+        ],
+        "user": {
+            "uid": 1,
+            "gid": 1
+        }
+    },
+    "linux": {
+        "namespaces": [
+            {"type": "pid"},
+            {"type": "network"},
+            {"type": "mount"},
+            {"type": "ipc"},
+            {"type": "uts"},
+            {"type": "user"},
+            {"type": "cgroup"}
+        ]
+    }
+}
+```
+
+Vous pouvez maintenant créer votre conteneur et le démarrer
+
+``` shell
+cargo run create id config.json
+cargo run start id
+```
+
+
+
 ## Fonctionnalités
 
 ### Create
