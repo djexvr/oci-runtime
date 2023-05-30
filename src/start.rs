@@ -3,7 +3,7 @@ use std::os::unix::net::UnixStream;
 use std::io::{Read, Write};
 
 
-/// Function used to start the desired inside the container host side.
+/// Function used to start the desired command inside the container host side.
 /// Sends start message and receives a response, then updates container state to running in status file
 pub fn start(id: String) -> Result<(),String> {
     let status =state::build_status(id.clone())?;

@@ -2,8 +2,7 @@ use nix::{mount::{mount, umount2, MntFlags, MsFlags},
 sched::{clone, CloneFlags}, 
 unistd::{chdir, pivot_root,Pid}};
 use std::{error::Error, fs::File, io::Write};
-use std::fs;
-use std::fs::{create_dir_all, remove_dir_all};
+use std::fs::{create_dir_all, remove_dir_all, canonicalize};
 use std::path::Path;
 use std::process::Command;
 use crate::parse::create_config;
@@ -29,13 +28,12 @@ pub fn create(id: String, path: String) -> Result<(), String> {
     check_id_unicity(id.clone())?;
 
     let config = create_config(path)?;
-    let container_fs_path_string = format!("{MAIN_PATH}{FOLDER_SUFF}{}",id.clone());
-    let container_fs_path = Path::new(container_fs_path_string.as_str());
+    let container_fs_path = canonicalize(Path::new(MAIN_PATH)).unwrap().join(FOLDER_SUFF).join(id.clone());
     if container_fs_path.exists() {
-        remove_dir_all(container_fs_path_string.as_str()).unwrap();
+        remove_dir_all(&container_fs_path).unwrap();
     }
     std::fs::create_dir_all(&container_fs_path).unwrap();
-    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path).unwrap();
+    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path.join("fs")).unwrap();
 
     
     // closure that executes the pivot_root, waits for the start message, forks for the main process, then send started message
@@ -110,10 +108,6 @@ pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 fn create_status_file(id: String, pid: Pid) -> Result<(),String> {
-    match Path::new(format!("{MAIN_PATH}{STATUS_SUFF}").as_str()).try_exists() {
-        Ok(true) => (),
-        _ => (),
-    }
     let path_string = format!("{MAIN_PATH}{STATUS_SUFF}{id}.json");
     let path = Path::new(path_string.as_str());
     let mut file: File;
@@ -135,9 +129,9 @@ fn create_status_file(id: String, pid: Pid) -> Result<(),String> {
 }
 
 fn check_id_unicity(id: String) -> Result<(),String> {
-    match Path::new(format!("{MAIN_PATH}{STATUS_SUFF}{id}.json",).as_str()).try_exists() {
-        Ok(true) => Err(format!("Error: Container with same ID already exists")),
-        Ok(false) => Ok(()),
-        Err(e) => Err(format!("Error: Unable to check for status file:\n{e}")),
+    if !Path::new(format!("{MAIN_PATH}{STATUS_SUFF}{id}.json",).as_str()).exists() {
+        Ok(())
+    } else {
+        Err(format!("Error: Container with same ID already exists"))
     }
 }
