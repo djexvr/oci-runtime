@@ -37,7 +37,7 @@ pub fn create(id: String, path: String) -> Result<(), String> {
 
         match std::env::set_current_dir(&config.process.cwd) {
             Ok(_) => (),
-            Err(e) => {
+            Err(_) => {
                 println!("Invalid cwd parameter");
                 return -1;
             }
