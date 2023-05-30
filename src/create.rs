@@ -1,29 +1,23 @@
-use nix::{mount::{mount, umount2, MntFlags, MsFlags},
-sched::{clone, CloneFlags}, 
-unistd::{chdir, pivot_root,Pid}};
-use std::{error::Error, fs::File, io::Write};
-use std::fs::{create_dir_all, remove_dir_all, canonicalize};
-use std::path::Path;
-use std::process::Command;
-use crate::parse::create_config;
-use crate::state::{STATUS_SUFF,MAIN_PATH};
-use crate::start::receive_start;
+use nix::{
+    mount::{mount, umount2, MntFlags, MsFlags},
+    sched::{clone, CloneFlags},
+    unistd::{chdir, pivot_root,Pid}
+};
+
+use std::{
+    error::Error,
+    fs::{create_dir_all, canonicalize, File},
+    io::Write,
+    path::Path
+};
+
+use crate::{
+    parse::create_config,
+    state::{STATUS_SUFF,MAIN_PATH},
+    start::receive_start
+};
 
 
-/// translates namespace from string to CloneFlags object
-pub fn to_flag(namespace: &String) -> CloneFlags {
-        match namespace.as_str() {
-
-            "pid" => CloneFlags::CLONE_NEWPID,
-            "network" => CloneFlags::CLONE_NEWNET,
-            "mount" => CloneFlags::CLONE_NEWNS,
-            "ipc" => CloneFlags::CLONE_NEWIPC,
-            "uts" => CloneFlags::CLONE_NEWUTS,
-            "user" => CloneFlags::CLONE_NEWUSER,
-            "cgroup" => CloneFlags::CLONE_NEWCGROUP,
-            _ => CloneFlags::empty(),
-        }
-}
 
 
 /// Does all the necessary operations to create the container file system, pivot root, change namespaces, and then await for start signal.
@@ -103,6 +97,21 @@ pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
     umount2("./oldroot", MntFlags::MNT_DETACH).unwrap();
     chdir("/").unwrap();
     Ok(())
+}
+
+/// translates namespace from string to CloneFlags object
+pub fn to_flag(namespace: &String) -> CloneFlags {
+        match namespace.as_str() {
+
+            "pid" => CloneFlags::CLONE_NEWPID,
+            "network" => CloneFlags::CLONE_NEWNET,
+            "mount" => CloneFlags::CLONE_NEWNS,
+            "ipc" => CloneFlags::CLONE_NEWIPC,
+            "uts" => CloneFlags::CLONE_NEWUTS,
+            "user" => CloneFlags::CLONE_NEWUSER,
+            "cgroup" => CloneFlags::CLONE_NEWCGROUP,
+            _ => CloneFlags::empty(),
+        }
 }
 
 /// creates the status file for the container
