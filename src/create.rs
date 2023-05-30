@@ -32,7 +32,7 @@ pub fn create(id: String, path: String) -> Result<(), String> {
     check_id_unicity(id.clone())?;
 
     let config = create_config(path)?;
-    let container_fs_path = canonicalize(config.root).unwrap();
+    let container_fs_path = canonicalize(&config.root).unwrap();
 
     // closure that executes the pivot_root, waits for the start message, forks for the main process, then send started message
     let pivot_root_closure = || {
@@ -58,7 +58,7 @@ pub fn create(id: String, path: String) -> Result<(), String> {
     };
 
     let pid =create_container_proc(pivot_root_closure, config.linux.namespaces);
-    create_status_file(id,pid,path)
+    create_status_file(id,pid,config.root)
 }
 
 
