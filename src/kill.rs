@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use super::state;
+use crate::state;
 use nix::unistd::Pid;
 use nix::sys::signal::{self, Signal};
 

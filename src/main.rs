@@ -1,6 +1,5 @@
 use oci_runtime::Config;
 use std::env;
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     let conf = Config::build(&args);
