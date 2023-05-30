@@ -97,14 +97,15 @@ pub fn modify_state(id: String, state: Status) -> Result<(),String>{
     };
     let mut value: HashMap<String,Value> = serde_json::from_str(&content[..]).unwrap();
     
+    value.remove("status");
     value.insert("status".to_string(), Value::String(state.to_string()));
-    let serialized = serde_json::to_string(&value).unwrap();
+    let serialized = format!("{}\n",serde_json::to_string(&value).unwrap());
     let mut f;
     match File::options().write(true).open(path) {
         Ok(file) => f = file,
         Err(e) => return Err(format!("Error: Could not open status file:\n{e}\n")),
     }
-    match f.write_all(serialized.trim().as_bytes()) {
+    match f.write_all(serialized.as_bytes()) {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Error: Unable to write status file:\n{e}\n")),
     }
