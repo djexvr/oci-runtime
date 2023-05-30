@@ -1,3 +1,4 @@
+use fs_extra::{copy_items, dir::CopyOptions};
 use nix::{mount::{mount, umount2, MntFlags, MsFlags}, sched::{clone, unshare, CloneFlags}, unistd::{chdir, pivot_root}};
 use std::error::Error;
 use std::fs::create_dir_all;
@@ -20,8 +21,11 @@ pub fn to_flag(namespace: &String) -> CloneFlags {
 
 pub fn create(id: String, path: String) -> Result<(), String> {
     let config = create_config(path)?;
+    let container_fs_path = Path::new("./.oci-runtime").join(id.as_str());
+    std::fs::create_dir_all(&container_fs_path).unwrap();
+    copy_dir::copy_dir(&container_fs_path.join("fs"), Path::new(&config.root)).unwrap();
     create_container_proc(|| {
-        init_container_fs(Path::new(&config.root)).unwrap();
+        pivot_to_container_fs(&container_fs_path).unwrap();
         use std::process;
         println!("My pid is {}", process::id());
         0
@@ -47,7 +51,7 @@ pub fn create_container_proc(child_fun: impl Fn() -> isize, namespaces: Vec<Stri
 }
 
 // Pivot root to the given path
-pub fn init_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
+pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
     mount(
         None::<&str>,
         "/",
