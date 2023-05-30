@@ -1,29 +1,23 @@
-use nix::{mount::{mount, umount2, MntFlags, MsFlags},
-sched::{clone, CloneFlags}, 
-unistd::{chdir, pivot_root,Pid}};
-use std::{error::Error, fs::File, io::Write};
-use std::fs::{create_dir_all, remove_dir_all, canonicalize};
-use std::path::Path;
-use std::process::Command;
-use crate::parse::create_config;
-use crate::state::{STATUS_SUFF,MAIN_PATH};
-use crate::start::receive_start;
+use nix::{
+    mount::{mount, umount2, MntFlags, MsFlags},
+    sched::{clone, CloneFlags},
+    unistd::{chdir, pivot_root,Pid}
+};
+
+use std::{
+    error::Error,
+    fs::{create_dir_all, canonicalize, File},
+    io::Write,
+    path::Path
+};
+
+use crate::{
+    parse::create_config,
+    state::{STATUS_SUFF,MAIN_PATH},
+    start::receive_start
+};
 
 
-/// translates namespace from string to CloneFlags object
-pub fn to_flag(namespace: &String) -> CloneFlags {
-        match namespace.as_str() {
-
-            "pid" => CloneFlags::CLONE_NEWPID,
-            "network" => CloneFlags::CLONE_NEWNET,
-            "mount" => CloneFlags::CLONE_NEWNS,
-            "ipc" => CloneFlags::CLONE_NEWIPC,
-            "uts" => CloneFlags::CLONE_NEWUTS,
-            "user" => CloneFlags::CLONE_NEWUSER,
-            "cgroup" => CloneFlags::CLONE_NEWCGROUP,
-            _ => CloneFlags::empty(),
-        }
-}
 
 
 /// Does all the necessary operations to create the container file system, pivot root, change namespaces, and then await for start signal.
@@ -31,14 +25,9 @@ pub fn create(id: String, path: String) -> Result<(), String> {
 
     check_id_unicity(id.clone())?;
 
-    let config = create_config(path.clone())?;
-    let container_fs_path = canonicalize(Path::new(&path)).unwrap();
-    if container_fs_path.exists() {
-        remove_dir_all(&container_fs_path).unwrap();
-    }
-    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path).unwrap();
+    let config = create_config(path)?;
+    let container_fs_path = canonicalize(&config.root).unwrap();
 
-    
     // closure that executes the pivot_root, waits for the start message, forks for the main process, then send started message
     let pivot_root_closure = || {
         pivot_to_container_fs(&container_fs_path).unwrap();
@@ -47,19 +36,23 @@ pub fn create(id: String, path: String) -> Result<(), String> {
             Err(s) => {println!("{s}");return -1}
         };
 
-        match Command::new(config.process.cwd.clone())
-                .args(config.process.args.clone())
-                .spawn() {
+        match std::env::set_current_dir(&config.process.cwd) {
             Ok(_) => (),
-            Err(e) => {{println!("Could not start desired process in container:\n{e}\n");return -1}}
+            Err(e) => {{println!("Invalid cwd parameter"); return -1}}
+        };
+
+        match nix::unistd::execvp(&std::ffi::CString::new(config.process.args[0].as_str()).unwrap(), &config.process.args.iter().map(|arg| std::ffi::CString::new(arg.as_str()).unwrap()).collect::<Vec<_>>()) {
+            Ok(_) => (),
+            Err(e) => {{println!("Could not start desired program in container:\n{e}\n"); return -1}}
         }
+
         return 0;
 
         
     };
 
     let pid =create_container_proc(pivot_root_closure, config.linux.namespaces);
-    create_status_file(id,pid,path)
+    create_status_file(id,pid,config.root)
 }
 
 
@@ -104,6 +97,21 @@ pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
     umount2("./oldroot", MntFlags::MNT_DETACH).unwrap();
     chdir("/").unwrap();
     Ok(())
+}
+
+/// translates namespace from string to CloneFlags object
+pub fn to_flag(namespace: &String) -> CloneFlags {
+        match namespace.as_str() {
+
+            "pid" => CloneFlags::CLONE_NEWPID,
+            "network" => CloneFlags::CLONE_NEWNET,
+            "mount" => CloneFlags::CLONE_NEWNS,
+            "ipc" => CloneFlags::CLONE_NEWIPC,
+            "uts" => CloneFlags::CLONE_NEWUTS,
+            "user" => CloneFlags::CLONE_NEWUSER,
+            "cgroup" => CloneFlags::CLONE_NEWCGROUP,
+            _ => CloneFlags::empty(),
+        }
 }
 
 /// creates the status file for the container
