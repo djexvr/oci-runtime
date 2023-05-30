@@ -31,14 +31,9 @@ pub fn create(id: String, path: String) -> Result<(), String> {
 
     check_id_unicity(id.clone())?;
 
-    let config = create_config(path.clone())?;
-    let container_fs_path = canonicalize(Path::new(&path)).unwrap();
-    if container_fs_path.exists() {
-        remove_dir_all(&container_fs_path).unwrap();
-    }
-    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path).unwrap();
+    let config = create_config(path)?;
+    let container_fs_path = canonicalize(config.root).unwrap();
 
-    
     // closure that executes the pivot_root, waits for the start message, forks for the main process, then send started message
     let pivot_root_closure = || {
         pivot_to_container_fs(&container_fs_path).unwrap();
@@ -47,12 +42,16 @@ pub fn create(id: String, path: String) -> Result<(), String> {
             Err(s) => {println!("{s}");return -1}
         };
 
-        match Command::new(config.process.cwd.clone())
-                .args(config.process.args.clone())
-                .spawn() {
+        match std::env::set_current_dir(&config.process.cwd) {
             Ok(_) => (),
-            Err(e) => {{println!("Could not start desired process in container:\n{e}\n");return -1}}
+            Err(e) => {{println!("Invalid cwd parameter"); return -1}}
+        };
+
+        match nix::unistd::execvp(&std::ffi::CString::new(config.process.args[0].as_str()).unwrap(), &config.process.args.iter().map(|arg| std::ffi::CString::new(arg.as_str()).unwrap()).collect::<Vec<_>>()) {
+            Ok(_) => (),
+            Err(e) => {{println!("Could not start desired program in container:\n{e}\n"); return -1}}
         }
+
         return 0;
 
         
