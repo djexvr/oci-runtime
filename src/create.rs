@@ -1,7 +1,6 @@
-use nix::{mount::{mount, umount2, MntFlags, MsFlags}, 
+use nix::{mount::{mount, umount2, MntFlags, MsFlags},
 sched::{clone, unshare, CloneFlags}, 
 unistd::{chdir, pivot_root,Pid}};
-use fs_extra::copy_items;
 use std::{error::Error, fs::File, io::Write};
 use std::fs::create_dir_all;
 use std::path::Path;
@@ -25,14 +24,13 @@ pub fn to_flag(namespace: &String) -> CloneFlags {
 pub fn create(id: String, path: String) -> Result<(), String> {
     check_id_unicity(id.clone())?;
     let config = create_config(path)?;
-    let container_fs_path = Path::new("./.oci-runtime").join(id.as_str());
+    let container_fs_path = fs::canonicalize("./.data").unwrap().join(id.as_str());
     std::fs::create_dir_all(&container_fs_path).unwrap();
-    copy_dir::copy_dir(&container_fs_path.join("fs"), Path::new(&config.root)).unwrap();
-
     create_container_folder(id.clone(),&config)?;
+    copy_dir::copy_dir( Path::new(&config.root), &container_fs_path.join("fs"),).unwrap();
 
     let pid =create_container_proc(|| {
-        pivot_to_container_fs(&container_fs_path).unwrap();
+        pivot_to_container_fs(&container_fs_path.join("fs")).unwrap();
         use std::process;
         println!("My pid is {}", process::id());
         0
@@ -66,19 +64,19 @@ pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
         None::<&str>,
         MsFlags::MS_PRIVATE | MsFlags::MS_REC,
         None::<&str>,
-    )?;
+    ).unwrap();
     mount(
         Some(new_root),
         new_root,
         None::<&Path>,
         MsFlags::MS_BIND | MsFlags::MS_REC,
         None::<&Path>,
-    )?;
-    chdir(Path::new(new_root))?;
-    create_dir_all(new_root.join("oldroot"))?;
-    pivot_root(new_root.as_os_str(), new_root.join("oldroot").as_os_str())?;
-    umount2("./oldroot", MntFlags::MNT_DETACH)?;
-    chdir("/")?;
+    ).unwrap();
+    chdir(Path::new(new_root)).unwrap();
+    create_dir_all(new_root.join("oldroot")).unwrap();
+    pivot_root(new_root.as_os_str(), new_root.join("oldroot").as_os_str()).unwrap();
+    umount2("./oldroot", MntFlags::MNT_DETACH).unwrap();
+    chdir("/").unwrap();
     Ok(())
 }
 
