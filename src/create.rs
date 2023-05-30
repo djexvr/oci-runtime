@@ -1,28 +1,24 @@
 use nix::{
     mount::{mount, umount2, MntFlags, MsFlags},
     sched::{clone, CloneFlags},
-    unistd::{chdir, pivot_root,Pid}
+    unistd::{chdir, pivot_root, Pid},
 };
 
 use std::{
     error::Error,
-    fs::{create_dir_all, canonicalize, File},
+    fs::{canonicalize, create_dir_all, File},
     io::Write,
-    path::Path
+    path::Path,
 };
 
 use crate::{
     parse::create_config,
-    state::{STATUS_SUFF,MAIN_PATH},
-    start::receive_start
+    start::receive_start,
+    state::{MAIN_PATH, STATUS_SUFF},
 };
-
-
-
 
 /// Does all the necessary operations to create the container file system, pivot root, change namespaces, and then await for start signal.
 pub fn create(id: String, path: String) -> Result<(), String> {
-
     check_id_unicity(id.clone())?;
 
     let config = create_config(path)?;
@@ -33,32 +29,46 @@ pub fn create(id: String, path: String) -> Result<(), String> {
         pivot_to_container_fs(&container_fs_path).unwrap();
         match receive_start() {
             Ok(_) => (),
-            Err(s) => {println!("{s}");return -1}
+            Err(s) => {
+                println!("{s}");
+                return -1;
+            }
         };
 
         match std::env::set_current_dir(&config.process.cwd) {
             Ok(_) => (),
-            Err(e) => {{println!("Invalid cwd parameter"); return -1}}
+            Err(e) => {
+                println!("Invalid cwd parameter");
+                return -1;
+            }
         };
 
-        match nix::unistd::execvp(&std::ffi::CString::new(config.process.args[0].as_str()).unwrap(), &config.process.args.iter().map(|arg| std::ffi::CString::new(arg.as_str()).unwrap()).collect::<Vec<_>>()) {
+        match nix::unistd::execvp(
+            // We need to convert String to CString before passing them to execvp
+            &std::ffi::CString::new(config.process.args[0].as_str()).unwrap(),
+            &config
+                .process
+                .args
+                .iter()
+                .map(|arg| std::ffi::CString::new(arg.as_str()).unwrap())
+                .collect::<Vec<_>>(),
+        ) {
             Ok(_) => (),
-            Err(e) => {{println!("Could not start desired program in container:\n{e}\n"); return -1}}
+            Err(e) => {
+                println!("Could not start desired program in container:\n{e}\n");
+                return -1;
+            }
         }
 
         return 0;
-
-        
     };
 
-    let pid =create_container_proc(pivot_root_closure, config.linux.namespaces);
-    create_status_file(id,pid,config.root)
+    let pid = create_container_proc(pivot_root_closure, config.linux.namespaces);
+    create_status_file(id, pid, config.root)
 }
-
 
 // Create a new process with required namespaces using clone
 pub fn create_container_proc(child_fun: impl Fn() -> isize, namespaces: Vec<String>) -> Pid {
-
     const STACK_SIZE: usize = 4 * 1024 * 1024; // 4 MB
     let ref mut stack: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
@@ -83,14 +93,16 @@ pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
         None::<&str>,
         MsFlags::MS_PRIVATE | MsFlags::MS_REC,
         None::<&str>,
-    ).unwrap();
+    )
+    .unwrap();
     mount(
         Some(new_root),
         new_root,
         None::<&Path>,
         MsFlags::MS_BIND | MsFlags::MS_REC,
         None::<&Path>,
-    ).unwrap();
+    )
+    .unwrap();
     chdir(Path::new(new_root)).unwrap();
     create_dir_all(new_root.join("oldroot")).unwrap();
     pivot_root(new_root.as_os_str(), new_root.join("oldroot").as_os_str()).unwrap();
@@ -101,21 +113,20 @@ pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
 
 /// translates namespace from string to CloneFlags object
 pub fn to_flag(namespace: &String) -> CloneFlags {
-        match namespace.as_str() {
-
-            "pid" => CloneFlags::CLONE_NEWPID,
-            "network" => CloneFlags::CLONE_NEWNET,
-            "mount" => CloneFlags::CLONE_NEWNS,
-            "ipc" => CloneFlags::CLONE_NEWIPC,
-            "uts" => CloneFlags::CLONE_NEWUTS,
-            "user" => CloneFlags::CLONE_NEWUSER,
-            "cgroup" => CloneFlags::CLONE_NEWCGROUP,
-            _ => CloneFlags::empty(),
-        }
+    match namespace.as_str() {
+        "pid" => CloneFlags::CLONE_NEWPID,
+        "network" => CloneFlags::CLONE_NEWNET,
+        "mount" => CloneFlags::CLONE_NEWNS,
+        "ipc" => CloneFlags::CLONE_NEWIPC,
+        "uts" => CloneFlags::CLONE_NEWUTS,
+        "user" => CloneFlags::CLONE_NEWUSER,
+        "cgroup" => CloneFlags::CLONE_NEWCGROUP,
+        _ => CloneFlags::empty(),
+    }
 }
 
 /// creates the status file for the container
-fn create_status_file(id: String, pid: Pid,root: String) -> Result<(),String> {
+fn create_status_file(id: String, pid: Pid, root: String) -> Result<(), String> {
     let path_string = format!("{MAIN_PATH}{STATUS_SUFF}{id}.json");
     let path = Path::new(path_string.as_str());
     let mut file: File;
@@ -123,7 +134,8 @@ fn create_status_file(id: String, pid: Pid,root: String) -> Result<(),String> {
         Err(e) => return Err(format!("Error: Could not create status file:\n{e}")),
         Ok(f) => file = f,
     }
-    let json_content = format!("{{
+    let json_content = format!(
+        "{{
         \"pid\":{},
         \"bundle\":\"{}\",
         \"status\":\"created\"
@@ -135,9 +147,8 @@ fn create_status_file(id: String, pid: Pid,root: String) -> Result<(),String> {
     }
 }
 
-
 /// checks that the id is unique
-fn check_id_unicity(id: String) -> Result<(),String> {
+fn check_id_unicity(id: String) -> Result<(), String> {
     if !Path::new(format!("{MAIN_PATH}{STATUS_SUFF}{id}.json",).as_str()).exists() {
         Ok(())
     } else {
