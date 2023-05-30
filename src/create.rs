@@ -139,7 +139,10 @@ fn create_status_file(id: String, pid: Pid, root: String) -> Result<(), String> 
         \"pid\":{},
         \"bundle\":\"{}\",
         \"status\":\"created\"
-    }}",pid,root.trim());
+    }}",
+        pid,
+        root.trim()
+    );
     let buf = json_content.as_bytes();
     match file.write(buf) {
         Err(e) => Err(format!("Error: Could not write to status file:\n{e}")),

@@ -1,9 +1,9 @@
 mod create;
-mod parse;
-mod state;
-mod kill;
 mod delete;
+mod kill;
+mod parse;
 mod start;
+mod state;
 
 /// The five commands that may be called through the CLI
 enum Commands {
@@ -86,7 +86,10 @@ impl Config {
 pub fn run(conf: Config) {
     let res = match conf.command {
         Commands::State => match state::state(conf.id) {
-            Ok(s) => {println!("{}", s); Ok(())}
+            Ok(s) => {
+                println!("{}", s);
+                Ok(())
+            }
             Err(s) => Err(s),
         },
         Commands::Create => create::create(conf.id, conf.path.unwrap()),
@@ -94,10 +97,8 @@ pub fn run(conf: Config) {
         Commands::Kill => kill::kill(conf.id, conf.signal),
         Commands::Delete => delete::delete(conf.id),
     };
-    match res { 
+    match res {
         Err(s) => println!("{}", s),
-         _ =>()
+        _ => (),
     }
 }
-
-

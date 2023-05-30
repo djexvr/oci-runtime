@@ -16,11 +16,11 @@ pub struct Linux {
 pub struct ContainerConfig {
     pub root: String,
     pub process: Process,
-    pub linux: Linux
+    pub linux: Linux,
 }
 
 ///  Reads the config file in the container bundle, and returns the result in a ContainerConfig struct
-pub fn create_config(path: String) -> Result<ContainerConfig,String> {
+pub fn create_config(path: String) -> Result<ContainerConfig, String> {
     let content = fs::read_to_string(path).expect("Unable to read file");
     let value: serde_json::Value = serde_json::from_str(&content[..]).unwrap();
 
@@ -33,14 +33,12 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
     let mut namespaces: Vec<String> = Vec::new();
 
     match &value["root"] {
-        Value::Object(_) => {
-            match &value["root"]["path"] {
-                Value::String(s) => root = s.clone(),
-                Value::Null => return Err(format!("Field root/path should exist in config.json")),
-                _ => return Err(format!("Invalid field root/path in config.json")),
-            }
-        }
-        Value::Null=> return Err(format!("Field root should exist in config.json")),
+        Value::Object(_) => match &value["root"]["path"] {
+            Value::String(s) => root = s.clone(),
+            Value::Null => return Err(format!("Field root/path should exist in config.json")),
+            _ => return Err(format!("Invalid field root/path in config.json")),
+        },
+        Value::Null => return Err(format!("Field root should exist in config.json")),
         _ => return Err(format!("Invalid field root in config.json")),
     }
 
@@ -48,23 +46,35 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
         Value::Object(_) => {
             match &value["process"]["cwd"] {
                 Value::String(s) => cwd = s.clone(),
-                Value::Null => return Err(format!("Field process/cwd should exist in config.json")),
+                Value::Null => {
+                    return Err(format!("Field process/cwd should exist in config.json"))
+                }
                 _ => return Err(format!("Invalid field process/cwd in config.json")),
             };
             match &value["process"]["user"] {
                 Value::Object(_) => {
                     match &value["process"]["user"]["uid"] {
                         Value::Number(n) => uid = n.as_i64().unwrap(),
-                        Value::Null => return Err(format!("Field process/user/uid should exist in config.json")),
+                        Value::Null => {
+                            return Err(format!(
+                                "Field process/user/uid should exist in config.json"
+                            ))
+                        }
                         _ => return Err(format!("Invalie field process/user/uid in config.json")),
                     }
                     match &value["process"]["user"]["gid"] {
                         Value::Number(n) => gid = n.as_i64().unwrap(),
-                        Value::Null => return Err(format!("Field process/user/gid should exist in config.json")),
+                        Value::Null => {
+                            return Err(format!(
+                                "Field process/user/gid should exist in config.json"
+                            ))
+                        }
                         _ => return Err(format!("Invalid field process/user/gid in config.json")),
                     }
-                },
-                Value::Null => return Err(format!("Field process/user should exist in config.json")),
+                }
+                Value::Null => {
+                    return Err(format!("Field process/user should exist in config.json"))
+                }
                 _ => return Err(format!("Invalid field process/user in config.json")),
             }
 
@@ -73,7 +83,11 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
                     for val in vec.into_iter() {
                         match val {
                             Value::String(s) => env.push(s.clone()),
-                            _ => return Err(format!("Invalid content of array process/env in config.json")),
+                            _ => {
+                                return Err(format!(
+                                    "Invalid content of array process/env in config.json"
+                                ))
+                            }
                         }
                     }
                 }
@@ -86,16 +100,19 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
                     for val in vec.into_iter() {
                         match val {
                             Value::String(s) => args.push(s.clone()),
-                            _ => return Err(format!("Invalid content of array process/args in config.json")),
+                            _ => {
+                                return Err(format!(
+                                    "Invalid content of array process/args in config.json"
+                                ))
+                            }
                         }
                     }
                 }
                 Value::Null => (),
                 _ => return Err(format!("Invalid field process/args in config.json")),
             }
-
-            }
-        Value::Null=> return Err(format!("Field process should exist in config.json")),
+        }
+        Value::Null => return Err(format!("Field process should exist in config.json")),
         _ => return Err(format!("Invalid field process in config.json")),
     }
 
@@ -108,16 +125,24 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
                             Value::Object(_) => {
                                 match &val["type"] {
                                     Value::String(s) => namespaces.push(s.clone()),
-                                    _ => return Err(format!("Invalid field process/linux/namespace/type in config.json"))
+                                    _ => return Err(format!(
+                                        "Invalid field process/linux/namespace/type in config.json"
+                                    )),
                                 }
-                            },
-                            _ => return Err(format!("Invalid content of array process/linux/namespace in config.json")),
+                            }
+                            _ => return Err(format!(
+                                "Invalid content of array process/linux/namespace in config.json"
+                            )),
                         }
                     }
-                },
-                _ => return Err(format!("Invalid content of array process/linux/namespace in config.json")),
+                }
+                _ => {
+                    return Err(format!(
+                        "Invalid content of array process/linux/namespace in config.json"
+                    ))
+                }
             }
-        },
+        }
         _ => (),
     }
 
@@ -130,10 +155,6 @@ pub fn create_config(path: String) -> Result<ContainerConfig,String> {
             args,
             cwd,
         },
-        linux: Linux {
-            namespaces,
-        }
-    })
+        linux: Linux { namespaces },
+    });
 }
-
-
