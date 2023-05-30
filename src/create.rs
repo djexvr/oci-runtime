@@ -7,7 +7,7 @@ use std::path::Path;
 use std::process::Command;
 use crate::parse::create_config;
 use crate::state::{FOLDER_SUFF,STATUS_SUFF,MAIN_PATH};
-use crate::start::{receive_start, send_started};
+use crate::start::receive_start;
 
 pub fn to_flag(namespace: &String) -> CloneFlags {
         match namespace.as_str() {
@@ -50,10 +50,6 @@ pub fn create(id: String, path: String) -> Result<(), String> {
             Ok(_) => (),
             Err(e) => {{println!("Could not start desired process in container:\n{e}\n");return -1}}
         }
-        match send_started(id.clone()) {
-            Ok(_) => (),
-            Err(s) => {println!("{s}");return -1}
-        };
         return 0;
 
         
