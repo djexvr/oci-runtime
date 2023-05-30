@@ -1,6 +1,6 @@
-use super::state;
+use crate::state;
 use std::fs::{remove_dir_all,remove_file};
-use super::state::{MAIN_PATH,FOLDER_SUFF,STATUS_SUFF};
+use crate::state::{MAIN_PATH,FOLDER_SUFF,STATUS_SUFF};
 
 pub fn delete(id: String) -> Result<(),String>{
     let status =state::build_status(id.clone())?;

@@ -2,8 +2,9 @@ use serde_json::Value;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::collections::HashMap;
 
-pub const MAIN_PATH: &str = "~/.oci-runtime/";
+pub const MAIN_PATH: &str = "/home/byejablek/.oci-runtime/";
 pub const STATUS_SUFF: &str = "container_statuses/";
 pub const FOLDER_SUFF: &str = "container_folders/";
 
@@ -17,10 +18,10 @@ pub enum Status {
 impl Status {
     pub fn to_string(&self) -> String {
         match self {
-            Self::Created => format!("Created"),
-            Self::Creating => format!("Creating"),
-            Self::Running => format!("Running"),
-            Self::Stopped => format!("Stopped"),
+            Self::Created => format!("created"),
+            Self::Creating => format!("creating"),
+            Self::Running => format!("running"),
+            Self::Stopped => format!("stopped"),
         }
     }
 }
@@ -44,11 +45,11 @@ pub fn build_status(id: String) -> Result<State,String> {
         Value::Number(n) => {
             pid = n.as_i64().unwrap()
         }
-        _ => return Err(format!("Expected PID to be a number in {path}", )),
+        _ => return Err(format!("Expected PID to be a number in {path}\n", )),
     }
     match &value["bundle"] {
         Value::String(s) => bundle = s.to_string(),
-        _ => return Err(format!("Expected Bundle to be a string in {path}"))
+        _ => return Err(format!("Expected Bundle to be a string in {path}\n"))
     }
     match &value["status"] {
         Value::String(s) => {
@@ -57,10 +58,10 @@ pub fn build_status(id: String) -> Result<State,String> {
                 "created" => status = Status::Created,
                 "running" => status = Status::Running,
                 "stopped" => status = Status::Stopped,
-                _ => return Err(format!("Invalid Status in {path}")),
+                _ => return Err(format!("Invalid Status in {path}\n")),
             }
         } 
-        _ => return Err(format!("Expected Status to be a string in {path}"))
+        _ => return Err(format!("Expected Status to be a string in {path}\n"))
     }
 
     return Ok(State {
@@ -74,7 +75,7 @@ pub fn build_status(id: String) -> Result<State,String> {
 pub fn state(id: String) -> Result<String,String>{
     let status = build_status(id)?;
     Ok(format!(
-        "id: {},\n pid: {},\n bundle: {},\n status: {}",
+        "id: {},\npid: {},\nbundle: {},\nstatus: {}\n",
         status.id, status.pid, status.bundle, status.status.to_string()
     ))
 }
@@ -83,21 +84,19 @@ pub fn modify_state(id: String, state: Status) -> Result<(),String>{
     let path = format!("{MAIN_PATH}{STATUS_SUFF}{id}.json");
     let content = match fs::read_to_string(path.clone()) {
         Ok(s) => s,
-        Err(_) => return Err(format!("Error: No container with such ID")),
+        Err(e) => return Err(format!("Error: No container with such ID:\n{e}\n")),
     };
-    let mut value: serde_json::Value = serde_json::from_str(&content[..]).unwrap();
+    let mut value: HashMap<String,Value> = serde_json::from_str(&content[..]).unwrap();
     
-    let status = match state {
-        Status::Created => format!("created"),
-        Status::Creating => format!("creating"),
-        Status::Running => format!("running"),
-        Status::Stopped => format!("stopped"),
-    };
-    value["status"] = Value::String(status);
+    value.insert("status".to_string(), Value::String(state.to_string()));
     let serialized = serde_json::to_string(&value).unwrap();
-    let mut f = File::open(path).expect("Unable to open file");
-    match f.write_all(serialized.as_bytes()) {
+    let mut f;
+    match File::options().write(true).open(path) {
+        Ok(file) => f = file,
+        Err(e) => return Err(format!("Error: Could not open status file:\n{e}\n")),
+    }
+    match f.write_all(serialized.trim().as_bytes()) {
         Ok(_) => Ok(()),
-        Err(_) => Err(format!("Error: Unable to write status file")),
+        Err(e) => Err(format!("Error: Unable to write status file:\n{e}\n")),
     }
 }
