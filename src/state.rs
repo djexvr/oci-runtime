@@ -5,7 +5,7 @@ use std::io::Write;
 use std::collections::HashMap;
 
 /// First part of the path to the file managed and created by our program
-pub const MAIN_PATH: &str = "/home/byejablek/.oci-runtime/";
+pub const MAIN_PATH: &str = "./.oci-runtime/";
 /// Suffix of the path leading to the status files of the containers
 pub const STATUS_SUFF: &str = "container_statuses/";
 /// Suffix of the path leading to the root files of the containers

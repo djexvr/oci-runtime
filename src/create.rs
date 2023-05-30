@@ -26,16 +26,13 @@ pub fn to_flag(namespace: &String) -> CloneFlags {
 
 pub fn create(id: String, path: String) -> Result<(), String> {
 
-    const STACK_SIZE: usize = 4 * 1024 * 1024; // 4 MB
-    let ref mut stack: [u8; STACK_SIZE] = [0; STACK_SIZE];
-
     check_id_unicity(id.clone())?;
 
     let config = create_config(path)?;
-
-    let container_fs_path = fs::canonicalize("./.data").unwrap().join(id.as_str());
+    let container_fs_path_string = format!("{MAIN_PATH}{FOLDER_SUFF}{}",id.clone());
+    let container_fs_path = Path::new(container_fs_path_string.as_str());
     if container_fs_path.exists() {
-        remove_dir_all(format!("{MAIN_PATH}{FOLDER_SUFF}{id}").as_str()).unwrap();
+        remove_dir_all(container_fs_path_string.as_str()).unwrap();
     }
     std::fs::create_dir_all(&container_fs_path).unwrap();
     copy_dir::copy_dir( Path::new(&config.root), &container_fs_path).unwrap();
@@ -43,7 +40,7 @@ pub fn create(id: String, path: String) -> Result<(), String> {
     
     // closure that executes the pivot_root, waits for the start message, forks for the main process, then send started message
     let pivot_root_closure = || {
-        pivot_to_container_fs(&container_fs_path.join("fs")).unwrap();
+        pivot_to_container_fs(&container_fs_path).unwrap();
         match receive_start(id.clone()) {
             Ok(_) => (),
             Err(s) => {println!("{s}");return -1}
