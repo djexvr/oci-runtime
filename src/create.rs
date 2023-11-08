@@ -105,10 +105,44 @@ pub fn pivot_to_container_fs(new_root: &Path) -> Result<(), Box<dyn Error>> {
     .unwrap();
     chdir(Path::new(new_root)).unwrap();
     create_dir_all(new_root.join("oldroot")).unwrap();
+    create_dir_all(new_root.join("dev")).unwrap();
+
     // mount /proc and /sys
-    mount(Some("/proc"), "proc", Some("proc"), MsFlags::empty(), None::<&str>).unwrap();
-    mount(Some("/sys"), "sys", Some("sysfs"), MsFlags::empty(), None::<&str>).unwrap();
+    mount(
+        None::<&str>,
+        "proc",
+        Some("proc"),
+        MsFlags::empty(),
+        None::<&str>,
+    )
+    .unwrap();
+    mount(
+        None::<&str>,
+        "sys",
+        Some("sysfs"),
+        MsFlags::empty(),
+        None::<&str>,
+    )
+    .unwrap();
+    mount(
+        None::<&str>,
+        "dev/pts",
+        Some("devpts"),
+        MsFlags::empty(),
+        None::<&str>,
+    )
+    .unwrap();
+    mount(
+        None::<&str>,
+        "dev/shm",
+        Some("tmpfs"),
+        MsFlags::empty(),
+        None::<&str>,
+    )
+    .unwrap();
+
     pivot_root(new_root.as_os_str(), new_root.join("oldroot").as_os_str()).unwrap();
+
     umount2("./oldroot", MntFlags::MNT_DETACH).unwrap();
     chdir("/").unwrap();
     Ok(())
